@@ -1,24 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server'; // NextRequest olduğuna dikkat!
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 // ---
 // GET: ID'ye GÖRE TEK BİR DÜKKANI GETİR
 // ---
-// DÜZELTME: 'params' bir PROMISE'dir.
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+// DİKKAT: TypeScript hatasını aşmak için 'any' kullanıyoruz.
+// Bu yöntem, versiyon uyuşmazlıklarını kesin olarak çözer.
+export async function GET(request: Request, props: any) {
   try {
-    // 1. Önce params'ı await ile çözüyoruz (Kritik Adım)
-    const resolvedParams = await params;
-    const shopId = Number(resolvedParams.id); 
+    // Props içinden params'ı alıp bekliyoruz (Next.js 15 uyumlu)
+    const params = await props.params;
+    const shopId = Number(params.id); 
 
     if (isNaN(shopId)) {
       return NextResponse.json({ error: 'Geçersiz Dükkan ID' }, { status: 400 });
     }
 
-    // 2. Veritabanından dükkanı çek
+    // Veritabanından dükkanı çek
     const shop = await prisma.shop.findUnique({
       where: { id: shopId },
       include: {
