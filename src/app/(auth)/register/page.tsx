@@ -97,10 +97,11 @@ export default function RegisterPage() {
 
 // Basit stil tanımlamaları (Tailwind yerine)
 // Tailwind'i henüz ayarlamadığımız için geçici olarak inline-style kullanıyoruz.
+// Stiller (Typescript uyumlu hale getirildi)
 const styles = {
   container: {
     display: "flex",
-    flexDirection: "column",
+    flexDirection: "column" as const, // 'as const' eklendi
     alignItems: "center",
     justifyContent: "center",
     minHeight: "100vh",
@@ -131,7 +132,7 @@ const styles = {
     padding: "0.75rem",
     border: "1px solid #ddd",
     borderRadius: "4px",
-    boxSizing: "border-box", // Önemli
+    boxSizing: "border-box" as const, // 'as const' eklendi
   },
   error: {
     color: "red",
