@@ -1,31 +1,30 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'; // Import'u değiştirdik
 import prisma from '@/lib/prisma';
 
 // ---
 // GET: ID'ye GÖRE TEK BİR DÜKKANI GETİR
 // ---
-// DÜZELTME: { params }: { params: Promise<{ id: string }> }
-// "Promise" kelimesine dikkat!
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+// DİKKAT: 'request' tipini 'NextRequest' yaptık.
+// 'params' tipini 'Promise' yaptık.
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    // Params'ı await ile çözüyoruz
-    const resolvedParams = await params;
-    const shopId = Number(resolvedParams.id); 
+    // Önce params'ı await ile çözüyoruz (Next.js 15 kuralı)
+    const { id } = await params;
+    const shopId = Number(id); 
 
     if (isNaN(shopId)) {
       return NextResponse.json({ error: 'Geçersiz Dükkan ID' }, { status: 400 });
     }
 
     const shop = await prisma.shop.findUnique({
-      where: {
-        id: shopId,
-      },
+      where: { id: shopId },
       include: {
         services: true,
         availability: true,
-        owner: {
-          select: { name: true, email: true },
-        },
+        owner: { select: { name: true, email: true } },
       },
     });
 
@@ -36,7 +35,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json(shop);
 
   } catch (error) {
-    console.log(`SHOP_ID_GET_ERROR`, error); 
+    console.log('SHOP_ID_GET_ERROR', error); 
     return NextResponse.json({ error: 'Dükkan bilgisi alınamadı' }, { status: 500 });
   }
 }
