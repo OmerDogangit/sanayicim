@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // .env dosyasından adresi okur
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String        @unique
+  passwordHash String
+  role         String // "owner" | "customer"
+  shops        Shop[]        @relation("OwnerShops")
+  appointments Appointment[] @relation("CustomerAppointments")
+}
+
+model Shop {
+  id           Int            @id @default(autoincrement())
+  ownerId      Int
+  owner        User           @relation(fields: [ownerId], references: [id], name: "OwnerShops")
+  name         String
+  description  String?
+  location     String?
+  services     Service[]
+  availability Availability[]
+  appointments Appointment[]
+  createdAt    DateTime       @default(now())
+}
+
+model Service {
+  id              Int           @id @default(autoincrement())
+  shopId          Int
+  shop            Shop          @relation(fields: [shopId], references: [id])
+  name            String
+  minPrice        Int
+  maxPrice        Int
+  durationMinutes Int
+  appointments    Appointment[] // Bu satırı ekledim, randevuya bağlanması için
+}
+
+model Availability {
+  id        Int      @id @default(autoincrement())
+  shopId    Int
+  shop      Shop     @relation(fields: [shopId], references: [id])
+  date      DateTime @db.Date // Sadece tarih
+  startTime DateTime @db.Time // Sadece saat
+  endTime   DateTime @db.Time // Sadece saat
+}
+
+model Appointment {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  shopId     Int
+  serviceId  Int
+  customer   User     @relation(fields: [customerId], references: [id], name: "CustomerAppointments")
+  shop       Shop     @relation(fields: [shopId], references: [id])
+  service    Service  @relation(fields: [serviceId], references: [id])
+  date       DateTime @db.Date // Randevu tarihi
+  startTime  DateTime // Randevu başlangıç saati
+  endTime    DateTime // Randevu bitiş saati
+  status     String   @default("pending") // pending | approved | completed
+  createdAt  DateTime @default(now())
+}

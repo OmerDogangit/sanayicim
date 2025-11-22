@@ -1,0 +1,93 @@
+import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import * as jose from 'jose'; // Token'ı doğrulamak için
+
+// === YARDIMCI FONKSİYONLAR (Shops API'sinden kopyaladık) ===
+const JWT_SECRET = process.env.JWT_SECRET || "varsayilan-cok-gizli-anahtar-bunu-degistir";
+
+async function verifyToken(token: string) {
+  try {
+    const secretKey = new TextEncoder().encode(JWT_SECRET);
+    const { payload } = await jose.jwtVerify(token, secretKey);
+    return payload;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function getUserFromRequest(request: Request) {
+  const cookieStore = request.headers.get('cookie');
+  if (!cookieStore) return null;
+
+  const token = cookieStore.split('; ')
+                           .find(row => row.startsWith('sanayicim_token='))
+                           ?.split('=')[1];
+
+  if (!token) return null;
+
+  const userPayload = await verifyToken(token);
+  return userPayload;
+}
+// ==============================
+
+// ---
+// POST: BİR DÜKKANA YENİ HİZMET EKLEME
+// ---
+export async function POST(request: Request) { 
+  try {
+    // 1. Giriş yapan kullanıcı kim?
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Yetkisiz: Geçerli bir token bulunamadı' }, { status: 401 });
+    }
+
+    // 2. Kullanıcının rolü "owner" (dükkan sahibi) mı?
+    if ((user as any).role !== 'owner') {
+      return NextResponse.json({ error: 'Yetkisiz: Sadece dükkan sahipleri hizmet ekleyebilir' }, { status: 403 });
+    }
+
+    // 3. Formdan gelen bilgileri al
+    const body = await request.json();
+    const { 
+      shopId, // Hangi dükkana hizmet eklenecek?
+      name,   // Hizmetin adı (örn: Yağ Değişimi)
+      minPrice, // Min Fiyat
+      maxPrice, // Max Fiyat
+      durationMinutes // Süre (örn: 30 dk)
+    } = body;
+
+    if (!shopId || !name || !minPrice || !maxPrice || !durationMinutes) {
+      return NextResponse.json({ error: 'Tüm alanlar zorunludur (Dükkan ID, Ad, Min/Max Fiyat, Süre)' }, { status: 400 });
+    }
+
+    // 4. Bu dükkan gerçekten bu kullanıcıya mı ait? (Güvenlik Kontrolü)
+    const shop = await prisma.shop.findUnique({
+      where: { id: Number(shopId) },
+    });
+
+    if (!shop) {
+      return NextResponse.json({ error: 'Hizmet eklenecek dükkan bulunamadı' }, { status: 404 });
+    }
+
+    if (shop.ownerId !== (user as any).id) {
+      return NextResponse.json({ error: 'Yetkisiz: Bu dükkan size ait değil' }, { status: 403 });
+    }
+
+    // 5. Güvenlik kontrolleri tamamsa, hizmeti oluştur
+    const newService = await prisma.service.create({
+      data: {
+        name,
+        minPrice: Number(minPrice),
+        maxPrice: Number(maxPrice),
+        durationMinutes: Number(durationMinutes),
+        shopId: Number(shopId), // Hizmeti dükkana bağla
+      },
+    });
+
+    return NextResponse.json(newService, { status: 201 });
+
+  } catch (error) {
+    console.log("SERVICE_POST_ERROR", error);
+    return NextResponse.json({ error: 'Hizmet oluşturulamadı' }, { status: 500 });
+  }
+}
