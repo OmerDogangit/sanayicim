@@ -5,10 +5,10 @@ import prisma from '@/lib/prisma';
 // GET: ID'ye GÖRE TEK BİR DÜKKANI GETİR
 // ---
 // DÜZELTME: { params }: { params: Promise<{ id: string }> }
-// Params artık bir Promise olarak tanımlandı.
+// "Promise" kelimesine dikkat!
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    // Params'ı await ile çözüyoruz (Bu kısım zaten doğruydu)
+    // Params'ı await ile çözüyoruz
     const resolvedParams = await params;
     const shopId = Number(resolvedParams.id); 
 
